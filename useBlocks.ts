@@ -1,91 +1,56 @@
-import { useState, useCallback } from 'react';
-import { db, todayStr } from '@/lib/firebase';
-import type { Block } from '@/types';
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "./firebase";
+import { yyyyMmDd, normPlate } from "./utils";
 
-export function useBlocks() {
-  const [loading, setLoading] = useState(false);
+export type BlockDoc = {
+  id: string;
+  date: string;
+  blockerUid: string;
+  blockerPlate?: string;
+  blockerName?: string;
+  blockerPhone?: string;
+  blockerSector?: string;
 
-  const addBlock = useCallback(async (
-    blockerUid: string, 
-    blockerPlate: string, 
-    blockedPlate: string
-  ): Promise<boolean> => {
-    if (!db) return false;
-    
-    setLoading(true);
-    try {
-      await db.collection("blocks").add({
-        blockerUid,
-        blockerPlate: blockerPlate.toUpperCase().replace(/\s+/g, ""),
-        blockedPlate: blockedPlate.toUpperCase().replace(/\s+/g, ""),
-        date: todayStr(),
-        ts: window.firebase.firestore.FieldValue.serverTimestamp()
-      });
-      return true;
-    } catch (err) {
-      console.error('Error adding block:', err);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  blockedPlate: string;
 
-  const getMyBlocks = useCallback(async (uid: string): Promise<Block[]> => {
-    if (!db) return [];
-    
-    try {
-      const snap = await db.collection("blocks")
-        .where("blockerUid", "==", uid)
-        .where("date", "==", todayStr())
-        .orderBy("ts", "desc")
-        .get();
-      
-      return snap.docs.map((doc: any) => ({ 
-        id: doc.id, 
-        ...doc.data() 
-      } as Block));
-    } catch (err) {
-      console.error('Error getting blocks:', err);
-      return [];
-    }
-  }, []);
+  ownerUid?: string;
+  ownerEmail?: string;
+  ownerName?: string;
+  ownerPhone?: string;
+  ownerSector?: string;
 
-  const deleteBlock = useCallback(async (blockId: string): Promise<boolean> => {
-    if (!db) return false;
-    
-    try {
-      await db.collection("blocks").doc(blockId).delete();
-      return true;
-    } catch (err) {
-      console.error('Error deleting block:', err);
-      return false;
-    }
-  }, []);
+  status: "open" | "closed";
+  ts: Date;
+};
 
-  const clearTodayBlocks = useCallback(async (uid: string): Promise<boolean> => {
-    if (!db) return false;
-    
-    try {
-      const snap = await db.collection("blocks")
-        .where("blockerUid", "==", uid)
-        .where("date", "==", todayStr())
-        .get();
-      
-      const batch = db.batch();
-      snap.docs.forEach((d: any) => batch.delete(d.ref));
-      await batch.commit();
-      return true;
-    } catch (err) {
-      console.error('Error clearing blocks:', err);
-      return false;
-    }
-  }, []);
+export async function upsertTodayBlock(
+  params: Omit<BlockDoc, "id" | "date" | "ts" | "status"> & { status?: BlockDoc["status"] }
+) {
+  const date = yyyyMmDd(new Date());
+  const blockedPlate = normPlate(params.blockedPlate);
+  if (!blockedPlate) throw new Error("Patente bloqueada vacía");
 
-  return {
-    loading,
-    addBlock,
-    getMyBlocks,
-    deleteBlock,
-    clearTodayBlocks
+  const id = `${params.blockerUid}_${blockedPlate}_${date}`;
+  const ref = doc(db, "bloqueos", id);
+
+  const payload: BlockDoc = {
+    id,
+    date,
+    blockerUid: params.blockerUid,
+    blockerPlate: params.blockerPlate ? normPlate(params.blockerPlate) : undefined,
+    blockerName: params.blockerName,
+    blockerPhone: params.blockerPhone,
+    blockerSector: params.blockerSector,
+    blockedPlate,
+    ownerUid: params.ownerUid,
+    ownerEmail: params.ownerEmail,
+    ownerName: params.ownerName,
+    ownerPhone: params.ownerPhone,
+    ownerSector: params.ownerSector,
+    status: params.status ?? "open",
+    ts: new Date(),
   };
+
+  await setDoc(ref, payload, { merge: true });
+  return payload;
 }

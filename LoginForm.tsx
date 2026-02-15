@@ -1,232 +1,60 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, Loader2, User, Users } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useState } from "react";
 
-interface LoginFormProps {
+type Props = {
   onLogin: (email: string, password: string) => Promise<void>;
-  onRegister: (email: string, password: string) => Promise<void>;
-  onResetPassword: (email: string) => Promise<void>;
-  onVisitorMode: () => void;
-  loading?: boolean;
-}
+};
 
-export function LoginForm({ 
-  onLogin, 
-  onRegister, 
-  onResetPassword,
-  onVisitorMode,
-  loading = false 
-}: LoginFormProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [resetSent, setResetSent] = useState(false);
-  const [showReset, setShowReset] = useState(false);
+export default function LoginForm({ onLogin }: Props) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setErr(null);
+    setBusy(true);
     try {
       await onLogin(email, password);
-    } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión');
+    } catch (e: any) {
+      setErr(e?.message ?? "Error al iniciar sesión");
+    } finally {
+      setBusy(false);
     }
-  };
-
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    try {
-      await onRegister(email, password);
-    } catch (err: any) {
-      setError(err.message || 'Error al crear cuenta');
-    }
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    try {
-      await onResetPassword(email);
-      setResetSent(true);
-    } catch (err: any) {
-      setError(err.message || 'Error al enviar correo de recuperación');
-    }
-  };
-
-  if (showReset) {
-    return (
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-xl text-center">Recuperar Contraseña</CardTitle>
-          <CardDescription className="text-center">
-            Ingresa tu correo para recibir instrucciones
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {resetSent ? (
-            <Alert className="bg-green-50 border-green-200">
-              <AlertDescription className="text-green-800">
-                ¡Correo enviado! Revisa tu bandeja de entrada para restablecer tu contraseña.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="reset-email">Correo electrónico</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  placeholder="tu@email.cl"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Enviar instrucciones
-              </Button>
-            </form>
-          )}
-          <Button
-            variant="ghost"
-            className="w-full mt-4"
-            onClick={() => setShowReset(false)}
-          >
-            Volver al inicio de sesión
-          </Button>
-        </CardContent>
-      </Card>
-    );
   }
 
   return (
-    <div className="space-y-4">
-      <Card className="w-full max-w-md mx-auto">
-        <CardHeader>
-          <CardTitle className="text-xl text-center flex items-center justify-center gap-2">
-            <User className="w-5 h-5" />
-            Acceso Personal CESFAM
-          </CardTitle>
-          <CardDescription className="text-center">
-            Inicia sesión con tu correo (Gmail, Hotmail, Yahoo, etc.)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-              <TabsTrigger value="register">Crear Cuenta</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Correo electrónico</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="tu@email.cl"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Contraseña</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="********"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Iniciar Sesión
-                </Button>
-                <div className="flex items-center justify-between pt-2">
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="text-sm p-0 h-auto"
-                    onClick={() => setShowReset(true)}
-                  >
-                    ¿Olvidaste tu contraseña?
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="text-sm p-0 h-auto text-sky-600 hover:text-sky-700"
-                    onClick={onVisitorMode}
-                  >
-                    <Users className="w-4 h-4 mr-1" />
-                    Entrar como visita
-                  </Button>
-                </div>
-              </form>
-            </TabsContent>
+    <div style={{ maxWidth: 420, margin: "40px auto", padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
+      <h2 style={{ margin: "0 0 12px" }}>Estacionamiento KW</h2>
+      <form onSubmit={submit}>
+        <label style={{ display: "block", fontSize: 12, opacity: 0.8 }}>Email</label>
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ccc", marginBottom: 10 }}
+          inputMode="email"
+          autoCapitalize="none"
+        />
+        <label style={{ display: "block", fontSize: 12, opacity: 0.8 }}>Contraseña</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #ccc", marginBottom: 10 }}
+        />
 
-            <TabsContent value="register">
-              <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="register-email">Correo electrónico</Label>
-                  <Input
-                    id="register-email"
-                    type="email"
-                    placeholder="tu@email.cl"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="register-password">Contraseña</Label>
-                  <Input
-                    id="register-password"
-                    type="password"
-                    placeholder="Mínimo 6 caracteres"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    minLength={6}
-                    required
-                  />
-                </div>
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Crear Cuenta
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+        {err && <div style={{ color: "crimson", fontSize: 13, marginBottom: 10 }}>{err}</div>}
+
+        <button
+          disabled={busy}
+          style={{ width: "100%", padding: 12, borderRadius: 10, border: "1px solid #111", background: "#111", color: "#fff" }}
+        >
+          {busy ? "Entrando..." : "Entrar"}
+        </button>
+        <div style={{ fontSize: 12, opacity: 0.7, marginTop: 8 }}>
+          Tip: si tu clave original era corta, quedó con sufijo <b>KW!</b> (ej: 1234 → 1234KW!)
+        </div>
+      </form>
     </div>
   );
 }
